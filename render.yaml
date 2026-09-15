@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: fc26-live-ai-phone
+    runtime: node
+    buildCommand: npm install && npx playwright install chromium
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24

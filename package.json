@@ -1,0 +1,15 @@
+{
+  "name": "fc26-live-ai-phone",
+  "version": "14.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "playwright": "^1.55.0"
+  }
+}
