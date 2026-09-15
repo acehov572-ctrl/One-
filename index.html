@@ -1,0 +1,45 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020"><title>FC26 Live AI</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080d19;color:#f4f7ff;font:16px system-ui,-apple-system,sans-serif}
+main{max-width:720px;margin:auto;padding:14px 12px 32px}.top{position:sticky;top:0;background:#080d19cc;backdrop-filter:blur(12px);padding:8px 0 12px;z-index:3}
+h1{margin:0;font-size:24px}.muted{color:#9ba7c4;font-size:13px}.btn{border:0;border-radius:14px;padding:13px 15px;font-weight:800;font-size:15px;color:#fff;background:#2677ee}.btn2{background:#202a42}
+.row{display:flex;gap:8px}.row>*{flex:1}.card{background:#121a2c;border:1px solid #26324e;border-radius:18px;padding:14px;margin:10px 0}
+.match{cursor:pointer}.match:active{transform:scale(.99)}.teams{font-weight:800;font-size:17px}.score{font-size:28px;font-weight:900;margin:6px 0}.pill{display:inline-block;padding:5px 8px;border-radius:99px;background:#202a42;font-size:12px}
+.selected{border-color:#4f90ff}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.metric{background:#0c1322;border-radius:14px;padding:12px}.num{font-size:25px;font-weight:900}.green{color:#61dc9b}
+#list:empty:after{content:"Нажми «Обновить матчи»";color:#9ba7c4}
+</style></head><body><main>
+<div class="top"><div class="row"><div><h1>FC26 Live AI</h1><div class="muted">Liga Pro / United Esports · данные Fonbet</div></div><button class="btn" onclick="load()">↻ Обновить</button></div></div>
+<div id="status" class="card muted">Готов к загрузке.</div><div id="list"></div>
+<div id="analysis" class="card" style="display:none"></div>
+</main>
+<script>
+let matches=[];
+const $=x=>document.getElementById(x);
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function render(){
+ $("list").innerHTML=matches.map((m,i)=>`<div class="card match ${m.sel?"selected":""}" onclick="pick(${i})"><span class="pill">${esc(m.competition)}</span><div class="teams">${esc(m.home)} — ${esc(m.away)}</div><div class="score">${esc(m.score)}</div><div class="muted">${esc(m.time)}</div></div>`).join("");
+}
+function pick(i){
+ matches=matches.map((m,n)=>({...m,sel:n===i})); render();
+ const m=matches[i]; const minute=/^\d/.test(m.time)?Math.min(8,Math.round(parseInt(m.time)/60*8)):0;
+ const total=m.homeScore+m.awayScore, rem=Math.max(0,8-minute);
+ const lambda=Math.max(.08,1.05*(rem/8)+(total>=3?.12:total===2?.05:0));
+ const goal=(1-Math.exp(-lambda))*100;
+ const p=line=>{const need=Math.floor(line-total)+1;if(need<=0)return 100;let s=0;for(let k=0;k<need;k++){let q=Math.exp(-lambda);for(let j=1;j<=k;j++)q*=lambda/j;s+=q}return(1-s)*100};
+ $("analysis").style.display="block"; $("analysis").innerHTML=`<b>${esc(m.home)} — ${esc(m.away)}</b><div class="grid" style="margin-top:10px">
+ <div class="metric">Счёт<div class="num">${m.homeScore}:${m.awayScore}</div></div><div class="metric">Минута<div class="num">${m.time}</div></div>
+ <div class="metric">Гол до конца<div class="num green">${goal.toFixed(1)}%</div></div><div class="metric">xG до конца<div class="num">${lambda.toFixed(2)}</div></div>
+ <div class="metric">ТБ 0.5<div class="num">${p(.5).toFixed(1)}%</div></div><div class="metric">ТБ 1.5<div class="num">${p(1.5).toFixed(1)}%</div></div>
+ <div class="metric">ТБ 2.5<div class="num">${p(2.5).toFixed(1)}%</div></div><div class="metric">ТБ 3.5<div class="num">${p(3.5).toFixed(1)}%</div></div></div>`;
+ window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+}
+async function load(){
+ $("status").textContent="Получаю текущие матчи Fonbet…"; $("list").innerHTML=""; $("analysis").style.display="none";
+ try{const r=await fetch("/api/live");const d=await r.json();matches=d.matches||[];
+   $("status").innerHTML=d.ok?`<b>● Онлайн</b> · найдено матчей: ${matches.length}<div class="muted">Источник: ${esc(d.source||"")}</div>`:`<b>Нет live-данных</b><div class="muted">${esc(d.message||"Источник недоступен")}</div>`;
+   render();
+ }catch(e){$("status").innerHTML="<b>Сервер недоступен</b><div class='muted'>"+esc(e.message)+"</div>"}
+}
+load(); setInterval(load,30000);
+</script></body></html>
